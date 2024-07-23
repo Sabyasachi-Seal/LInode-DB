@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.base import Base
 from app.models.user import User
+from app.models.user_schemas import UserCreate, UserUpdate, UserDB
 
 DATABASE_URL = "sqlite+aiosqlite:///./test.db"
 

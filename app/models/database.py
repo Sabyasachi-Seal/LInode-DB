@@ -3,8 +3,8 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.models.base import Base
 
-class UserToDatabases(Base):
-    __tablename__ = "user_to_databases"
+class Database(Base):
+    __tablename__ = "databases"
 
     id = Column(String, primary_key=True, index=True)
     user_id = Column(String, ForeignKey('users.id'), nullable=False)

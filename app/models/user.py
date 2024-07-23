@@ -11,4 +11,4 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
 
-    databases = relationship("UserToDatabases", back_populates="user")
+    databases = relationship("Database", back_populates="user")

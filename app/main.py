@@ -6,11 +6,12 @@ from pydantic import BaseModel
 from uuid import uuid4
 
 from app.models.base import Base
-from app.models.user_to_databases import UserToDatabases
+from app.models.database import Database
 from app.auth.auth import auth_backends, fastapi_users
 from app.utils.linode_utils import create_linode_instance
+from app.config import settings
 
-DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+DATABASE_URL = f"mysql+aiomysql://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -68,8 +69,8 @@ async def create_database(db_request: DatabaseRequest, user=Depends(fastapi_user
             new_db=db_request.new_db
         )
 
-        # Store the database information in the UserToDatabases table
-        user_to_db = UserToDatabases(
+        # Store the database information in the Database table
+        db_instance = Database(
             id=str(uuid4()),
             user_id=user.id,
             db_type=db_request.db_type,
@@ -77,7 +78,7 @@ async def create_database(db_request: DatabaseRequest, user=Depends(fastapi_user
             db_instance_id=str(instance.id),
             backup_config=None  # Add backup config if needed
         )
-        session.add(user_to_db)
+        session.add(db_instance)
         await session.commit()
 
         return {"message": "Database instance created successfully", "instance_id": instance.id}
