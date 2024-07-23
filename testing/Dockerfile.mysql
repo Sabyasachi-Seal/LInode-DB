@@ -1,0 +1,9 @@
+# Use the official MySQL image from the Docker Hub
+FROM mysql:8.0
+
+# Set environment variables for MySQL
+ENV MYSQL_ROOT_PASSWORD='password'
+ENV MYSQL_DATABASE='mysql'
+
+# Expose the default MySQL port
+EXPOSE 3306

@@ -8,7 +8,7 @@ STACKSCRIPTS = {
     "mongodb": settings.stackscript_mongodb
 }
 
-client = LinodeClient("your_linode_api_token")
+client = LinodeClient(settings.linode_token)
 
 def create_linode_instance(label, db_type, db_root_password, new_user, new_user_password, new_db, instance_type, region):
     stackscript_data = {
@@ -22,7 +22,7 @@ def create_linode_instance(label, db_type, db_root_password, new_user, new_user_
     instance = client.linode.instance_create(
         type=instance_type,
         region=region,
-        image="linode/ubuntu20.04",
+        image="linode/ubuntu22.04",
         label=label,
         root_pass=db_root_password,
         stackscript_id=STACKSCRIPTS[db_type],

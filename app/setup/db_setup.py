@@ -14,9 +14,12 @@ async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    await engine.dispose()
+
 async def drop_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 async def seed_initial_data():
     async with async_session_maker() as session:
@@ -33,15 +36,17 @@ async def seed_initial_data():
                     is_superuser=True
                 )
                 session.add(user)
+    await engine.dispose()
 
 async def apply_migrations():
     async with engine.begin() as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS test_table (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))")
+    await engine.dispose()
 
 async def main():
     await create_db_and_tables()
-    await seed_initial_data()
-    await apply_migrations()
+    # await seed_initial_data()
+    # await apply_migrations()
 
 if __name__ == "__main__":
     import asyncio

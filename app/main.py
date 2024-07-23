@@ -7,7 +7,7 @@ from app.models.base import Base
 from app.models.database import Database
 from app.requests.requests import DatabaseRequest
 from app.auth.auth import auth_backends, fastapi_users
-from app.utils.linode_utils import create_linode_instance
+from app.utils.linode import create_linode_instance
 from app.utils.db import get_db
 
 app = FastAPI()

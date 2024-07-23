@@ -1,3 +1,11 @@
 fastapi
+uvicorn
+fastapi-users[sqlalchemy2]
+fastapi-users[authentication]
+fastapi-users[jwt]
 sqlalchemy
-aiosqlite
+aiomysql
+pydantic
+pydantic-settings
+python-dotenv
+requests

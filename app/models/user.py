@@ -1,14 +1,18 @@
-from sqlalchemy import Column, String, Boolean
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+# app/models/user.py
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 class User(Base):
-    __tablename__ = "users"
+    __tablename__ = 'users'
 
-    id = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
+    id = Column(String(36), primary_key=True)  # Assuming UUID as string
+    username = Column(String(50), nullable=False)
+    email = Column(String(100), nullable=False, unique=True)
+    password = Column(String(100), nullable=False)
+    first_name = Column(String(50), nullable=True)
+    last_name = Column(String(50), nullable=True)
 
-    databases = relationship("Database", back_populates="user")
+    def __repr__(self):
+        return f"<User(username='{self.username}', email='{self.email}')>"

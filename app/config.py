@@ -1,4 +1,6 @@
-from pydantic import BaseSettings
+import dotenv
+dotenv.load_dotenv()
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     db_user: str
@@ -12,6 +14,7 @@ class Settings(BaseSettings):
     secret_key: str
     init_email: str
     init_password: str
+    linode_token: str
 
     class Config:
         env_file = ".env"
