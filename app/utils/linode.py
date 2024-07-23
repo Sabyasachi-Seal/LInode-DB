@@ -1,15 +1,16 @@
 from linode_api4 import LinodeClient
+from app.config import settings
 
 # StackScript IDs for different databases
 STACKSCRIPTS = {
-    "mysql": 123456,  # Replace with your MySQL StackScript ID
-    "postgresql": 123457,  # Replace with your PostgreSQL StackScript ID
-    "mongodb": 123458  # Replace with your MongoDB StackScript ID
+    "mysql": settings.stackscript_mysql,
+    "postgresql": settings.stackscript_postgresql,
+    "mongodb": settings.stackscript_mongodb
 }
 
 client = LinodeClient("your_linode_api_token")
 
-def create_linode_instance(label, db_type, db_root_password, new_user, new_user_password, new_db):
+def create_linode_instance(label, db_type, db_root_password, new_user, new_user_password, new_db, instance_type, region):
     stackscript_data = {
         "db_root_password": db_root_password,
         "new_user": new_user,
@@ -19,8 +20,8 @@ def create_linode_instance(label, db_type, db_root_password, new_user, new_user_
         stackscript_data["new_db"] = new_db
 
     instance = client.linode.instance_create(
-        type="g6-nanode-1",
-        region="us-east",
+        type=instance_type,
+        region=region,
         image="linode/ubuntu20.04",
         label=label,
         root_pass=db_root_password,

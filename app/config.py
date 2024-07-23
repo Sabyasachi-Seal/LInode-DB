@@ -1,4 +1,3 @@
-import os
 from pydantic import BaseSettings
 
 class Settings(BaseSettings):
@@ -7,6 +6,12 @@ class Settings(BaseSettings):
     db_host: str
     db_port: int
     db_name: str
+    stackscript_mysql: int
+    stackscript_postgresql: int
+    stackscript_mongodb: int
+    secret_key: str
+    init_email: str
+    init_password: str
 
     class Config:
         env_file = ".env"
