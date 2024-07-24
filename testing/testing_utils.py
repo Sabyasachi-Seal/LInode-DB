@@ -58,6 +58,7 @@ def test_databases(jwt_token: str):
     create_database(jwt_token, "mysql", MYSQL_ROOT_PASSWORD, "newuser", "newuserpassword", "newdatabase", "g6-nanode-1", "us-east", "daily")
 
 if __name__ == "__main__":
-    create_db_and_tables()
-    # jwt_token = test_users()
+    # create_db_and_tables()
+    jwt_token = test_users()
+    print(jwt_token)
     # test_databases(jwt_token)

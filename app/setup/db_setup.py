@@ -4,6 +4,7 @@ from sqlalchemy import select, exists
 from app.models.base import Base
 from app.models.user import User
 from app.config import settings
+from app.utils.db import get_db
 
 DATABASE_URL = f"mysql+aiomysql://{settings.db_user}:{settings.db_password}@{settings.db_host}:{settings.db_port}/{settings.db_name}"
 
@@ -25,13 +26,16 @@ async def seed_initial_data():
     async with async_session_maker() as session:
         async with session.begin():
             # Check if initial data exists
-            user_exists = await session.execute(select(exists().where(User.email == "admin@example.com")))
+            user_exists = await session.execute(select(exists().where(User.email == "sabyasachi@webknot.in")))
             if not user_exists.scalar():
                 # Seed initial user
                 user = User(
                     id="1",
+                    username="sabyasachi",
+                    first_name="Sabyasachi",
+                    last_name="Seal",
                     email=settings.init_email,
-                    hashed_password=settings.init_pass,  # Replace with a properly hashed password
+                    password=settings.init_password,
                     is_active=True,
                     is_superuser=True
                 )
@@ -44,8 +48,8 @@ async def apply_migrations():
     await engine.dispose()
 
 async def main():
-    await create_db_and_tables()
-    # await seed_initial_data()
+    # await create_db_and_tables()
+    await seed_initial_data()
     # await apply_migrations()
 
 if __name__ == "__main__":

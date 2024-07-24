@@ -22,3 +22,8 @@ class BackupSchedule(str, Enum):
     daily = "daily"
     weekly = "weekly"
     monthly = "monthly"
+
+class BackupStatus(Enum):
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    FAILED = "failed"

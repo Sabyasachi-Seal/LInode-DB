@@ -1,9 +1,7 @@
 # app/models/user.py
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
+from sqlalchemy import Column, Integer, String, Boolean
+from app.models.base import Base
+from sqlalchemy.orm import relationship
 class User(Base):
     __tablename__ = 'users'
 
@@ -13,6 +11,11 @@ class User(Base):
     password = Column(String(100), nullable=False)
     first_name = Column(String(50), nullable=True)
     last_name = Column(String(50), nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
 
     def __repr__(self):
         return f"<User(username='{self.username}', email='{self.email}')>"
+    
+
+    databases = relationship("Database", back_populates="user")

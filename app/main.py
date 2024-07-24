@@ -5,11 +5,11 @@ from uuid import uuid4
 
 from app.models.base import Base
 from app.models.database import Database
-from app.requests.requests import DatabaseRequest
-from app.auth.auth import auth_backends, fastapi_users
+from app.models.requests import DatabaseRequest
+from app.auth.auth import auth_backend, fastapi_users, current_active_user
 from app.utils.linode import create_linode_instance
 from app.utils.db import get_db
-
+from app.models.requests import UserCreate, UserUpdate, UserDB
 app = FastAPI()
 
 app.add_middleware(
@@ -22,23 +22,23 @@ app.add_middleware(
 
 # Include the FastAPI Users routes
 app.include_router(
-    fastapi_users.get_auth_router(auth_backends[0]),
+    fastapi_users.get_auth_router(auth_backend),
     prefix="/auth/jwt",
     tags=["auth"],
 )
 app.include_router(
-    fastapi_users.get_register_router(),
+    fastapi_users.get_register_router(user_create_schema=UserCreate, user_schema=UserDB),
     prefix="/auth",
     tags=["auth"],
 )
 app.include_router(
-    fastapi_users.get_users_router(),
+    fastapi_users.get_users_router(user_update_schema=UserUpdate, user_schema=UserDB),
     prefix="/users",
     tags=["users"],
 )
 
 @app.post("/create_database/")
-async def create_database(db_request: DatabaseRequest, user=Depends(fastapi_users.get_current_active_user), session: AsyncSession = Depends(get_db)):
+async def create_database(db_request: DatabaseRequest, user=Depends(current_active_user), session: AsyncSession = Depends(get_db)):
     try:
         # Create the Linode instance
         instance = create_linode_instance(
@@ -69,3 +69,8 @@ async def create_database(db_request: DatabaseRequest, user=Depends(fastapi_user
         return {"message": "Database instance created successfully", "instance_id": instance.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating database instance: {str(e)}")
+    
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

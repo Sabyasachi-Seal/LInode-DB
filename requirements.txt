@@ -1,5 +1,6 @@
 fastapi
 uvicorn
+fastapi-users[sqlalchemy]
 fastapi-users[sqlalchemy2]
 fastapi-users[authentication]
 fastapi-users[jwt]
@@ -9,3 +10,4 @@ pydantic
 pydantic-settings
 python-dotenv
 requests
+linode_api4
