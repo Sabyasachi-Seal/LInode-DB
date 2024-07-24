@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select, exists
+from sqlalchemy import select, exists, text
 from app.models.base import Base
 from app.models.user import User
 from app.config import settings
@@ -44,13 +44,14 @@ async def seed_initial_data():
 
 async def apply_migrations():
     async with engine.begin() as conn:
-        conn.execute("CREATE TABLE IF NOT EXISTS test_table (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))")
+        await conn.execute(text("CREATE TABLE IF NOT EXISTS test_table (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))"))
     await engine.dispose()
 
 async def main():
-    # await create_db_and_tables()
+    await drop_db_and_tables()
+    await create_db_and_tables()
     await seed_initial_data()
-    # await apply_migrations()
+    await apply_migrations()
 
 if __name__ == "__main__":
     import asyncio

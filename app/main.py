@@ -10,6 +10,7 @@ from app.models.requests import DatabaseRequest
 from app.utils.linode import create_linode_instance
 from app.utils.db import get_db
 from app.models.requests import UserCreate, UserUpdate, UserDB
+from datetime import datetime
 app = FastAPI()
 
 app.add_middleware(
@@ -40,33 +41,36 @@ app.add_middleware(
 @app.post("/create_database/")
 async def create_database(db_request: DatabaseRequest, session: AsyncSession = Depends(get_db)):
     try:
-        label = f"{db_request.db_type}-instance-{str(uuid4())}"
+        label = f"{db_request.db_type}-{str(uuid4())}"
         # Create the Linode instance
-        # instance = create_linode_instance(
-        #     label=label,
-        #     db_type=db_request.db_type,
-        #     db_root_password=db_request.db_root_password,
-        #     new_user=db_request.new_user,
-        #     new_user_password=db_request.new_user_password,
-        #     instance_type=db_request.instance_type,
-        #     region=db_request.region
-        # )
+        instance = create_linode_instance(
+            label=label,
+            db_type=db_request.db_type,
+            db_root_password=db_request.db_root_password,
+            new_user=db_request.new_user,
+            new_user_password=db_request.new_user_password,
+            instance_type=db_request.instance_type,
+            region=db_request.region
+        )
+
+        print(instance)
 
         # Store the database information in the Database table
         db_instance = Database(
             id=str(uuid4()),
-            # user_id=user.id,
-            user_id = "dummy",
+            user_id="1",  # Use a dummy user ID for now
             db_type=db_request.db_type,
             db_name=label,
-            db_instance_id=str("dummy"),
+            db_instance_id=str(instance.id),
             instance_type=db_request.instance_type,
             region=db_request.region,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         session.add(db_instance)
         await session.commit()
 
-        return {"message": "Database instance created successfully", "instance_id": instance.id}
+        return {"message": "Database instance created successfully", "instance_id": db_instance.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating database instance: {str(e)}")
     
