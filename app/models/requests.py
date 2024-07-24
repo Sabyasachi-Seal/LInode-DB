@@ -8,7 +8,6 @@ class DatabaseRequest(BaseModel):
     db_root_password: str
     new_user: str
     new_user_password: str
-    new_db: str  # Only used for PostgreSQL and MongoDB
     instance_type: InstanceType  # Type of Linode instance
     region: Region  # Linode region
     backup_schedule: Optional[BackupSchedule] = None  # Backup schedule
