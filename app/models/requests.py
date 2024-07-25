@@ -12,6 +12,14 @@ class DatabaseRequest(BaseModel):
     region: Region  # Linode region
     backup_schedule: Optional[BackupSchedule] = None  # Backup schedule
 
+
+class DatabaseBackupRequest(BaseModel):
+    database_id: UUID
+    hour_of_day: int
+    day_of_week: Optional[int] = None  # Optional, only present for for weekly frequency
+    day_of_month: Optional[int] = None  # Optional, for only present for monthly frequency
+    frequency: BackupSchedule
+
 class UserBase(BaseModel):
     email: EmailStr
     is_active: Optional[bool] = True
