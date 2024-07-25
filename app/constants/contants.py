@@ -9,6 +9,12 @@ STACKSCRIPTS = {
     DatabaseType.mongodb.value: settings.stackscript_mongodb
 }
 
+BACKUP_SCRIPTS = {
+    DatabaseType.mysql.value: pkg_resources.resource_string("app", "data/mysql_backup.sh").decode("utf-8")
+}
+
 SUPPORTED_DATABASES = [DatabaseType.mysql.value]
 
-MYSQL_BACKUP_SCRIPT = pkg_resources.resource_string("app", "data/mysql_backup.sh").decode("utf-8")
+AUTHORIZED_KEYS = settings.authorized_keys.split(",") if len (settings.authorized_keys) > 0 else None
+
+INSTANCE_DEFAULT_USER = "root"

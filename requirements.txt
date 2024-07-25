@@ -11,3 +11,4 @@ pydantic-settings
 python-dotenv
 requests
 linode_api4
+paramiko

@@ -35,8 +35,8 @@ def schedule_backup(database_id: str, hour_of_day: int, frequency: str, day_of_w
     return response.json()
 
 def test_databases():
-    # res = create_database("mysql", "Webknot@1234", "seal", "Webknot@1234", "g6-nanode-1", "us-east")
-    res = schedule_backup("ccd7f6df-0797-4c92-8722-440e3d551a35", 2, "daily")
+    res = create_database("mysql", "Webknot@1234", "seal", "Webknot@1234", "g6-nanode-1", "us-east")
+    res = schedule_backup(res['instance_id'], 2, "daily")
     print(res)
 
 if __name__ == "__main__":

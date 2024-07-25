@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     init_email: str
     init_password: str
     linode_token: str
+    authorized_keys: str
 
     class Config:
         env_file = ".env"

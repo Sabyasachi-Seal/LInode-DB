@@ -5,7 +5,7 @@ from uuid import uuid4
 from app.models import Database, BackupSchedule
 from app.models.requests import DatabaseRequest, DatabaseBackupRequest
 # from app.auth.auth import auth_backend, fastapi_users, current_active_user
-from app.utils.linode import create_linode_instance
+from app.utils.linode import create_linode_instance, deploy_backup_script
 from app.utils.db import get_db, convert_schedule_to_cron, validate_backup_schedule_inputs
 from app.models.requests import UserCreate, UserUpdate, UserDB
 from app.constants.enums import BackupStatus
@@ -103,7 +103,15 @@ async def schedule_backup(
             frequency=backup_frequency
         )
 
-        # TODO add the logic to copy the sh file to the linode instance and schedule the cron job
+        # Get the database instance
+        database = await session.get(Database, database_id)
+
+        status = deploy_backup_script(
+            instance_id=database.db_instance_id,
+            cron_schedule=cron_expression,
+            db_type=database.db_type
+            
+        )
 
         # Create backup schedule
         new_backup_schedule = BackupSchedule(
@@ -120,7 +128,7 @@ async def schedule_backup(
         session.add(new_backup_schedule)
         await session.commit()
 
-        return {"message": "Backup schedule created successfully", "schedule_id": new_backup_schedule.id}
+        return {"message": "Backup schedule created successfully", "schedule_id": new_backup_schedule.id, "status": status}
     except Exception as e:
         await session.rollback()
         raise HTTPException(status_code=500, detail=f"Error scheduling backup: {str(e)}")
