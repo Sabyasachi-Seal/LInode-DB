@@ -5,7 +5,6 @@ from app.constants.enums import DatabaseType, InstanceType, Region, BackupSchedu
 
 class DatabaseRequest(BaseModel):
     db_type: DatabaseType  # "mysql", "postgresql", or "mongodb"
-    db_root_password: str
     new_user: str
     new_user_password: str
     instance_type: InstanceType  # Type of Linode instance
@@ -19,6 +18,11 @@ class DatabaseBackupRequest(BaseModel):
     day_of_week: Optional[int] = None  # Optional, only present for for weekly frequency
     day_of_month: Optional[int] = None  # Optional, for only present for monthly frequency
     frequency: BackupSchedule
+
+class DatabaseUpdateRequest(BaseModel):
+    database_id: UUID
+    db_name: Optional[str] = None
+    instance_type: Optional[str] = None
 
 class UserBase(BaseModel):
     email: EmailStr
