@@ -5,7 +5,7 @@ from uuid import uuid4
 from app.models import Database, BackupSchedule
 from app.models.requests import DatabaseRequest, DatabaseBackupRequest, DatabaseUpdateRequest
 # from app.auth.auth import auth_backend, fastapi_users, current_active_user
-from app.utils.linode import create_linode_instance, deploy_backup_script
+from app.utils.linode import create_linode_instance, deploy_backup_script, update_linode_instance, delete_linode_instance
 from app.utils.db import get_db, convert_schedule_to_cron, validate_backup_schedule_inputs
 from app.models.requests import UserCreate, UserUpdate, UserDB
 from app.constants.enums import BackupStatus
@@ -95,6 +95,7 @@ async def delete_database(database_id: str, session: AsyncSession = Depends(get_
     try:
         result = await session.execute(select(Database).where(Database.id == database_id))
         database = result.scalar_one()
+        delete_linode_instance(database.db_instance_id)
         await session.delete(database)
         await session.commit()
         return {"message": "Database deleted successfully"}
@@ -108,7 +109,11 @@ async def update_database(db_update: DatabaseUpdateRequest, session: AsyncSessio
         database = result.scalar_one()
 
         # update the instance type in linode
-        
+        update_linode_instance(
+            instance_id=database.db_instance_id,
+            instance_type=db_update.instance_type,
+            region=database.region
+        )
 
         # Update fields
         database.db_name = db_update.db_name or database.db_name

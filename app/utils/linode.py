@@ -44,6 +44,22 @@ def create_linode_instance(label, db_type, db_root_password, new_user, new_user_
 
     return instance
 
+def update_linode_instance(instance_id: str, instance_type: str, region: str):
+    try:
+        instance = client.load(Instance, instance_id)
+        instance.type = instance_type
+        instance.region = region
+        instance.save()
+    except Exception as e:
+        raise ValueError(f"Error updating Linode instance {instance_id}: {str(e)}")
+
+def delete_linode_instance(instance_id: str):
+    try:
+        instance = client.load(Instance, instance_id)
+        instance.delete()
+    except Exception as e:
+        raise ValueError(f"Error deleting Linode instance {instance_id}: {str(e)}")
+
 def deploy_backup_script(instance_id: str, db_type: str, cron_schedule: str, ssh_username: str = INSTANCE_DEFAULT_USER, ssh_password = settings.init_password):
     
     server_ip = get_server_ip(instance_id)
