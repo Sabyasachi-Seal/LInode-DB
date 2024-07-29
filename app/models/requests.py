@@ -13,7 +13,8 @@ class DatabaseRequest(BaseModel):
 
 
 class DatabaseBackupRequest(BaseModel):
-    database_id: UUID
+    user_id: str
+    database_id: str
     hour_of_day: int
     day_of_week: Optional[int] = None  # Optional, only present for for weekly frequency
     day_of_month: Optional[int] = None  # Optional, for only present for monthly frequency

@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     init_password: str
     linode_token: str
     authorized_keys: str
+    linode_db_backup_bucket: str
+    linode_db_backup_bucket_region: str
+    linode_db_backup_bucket_access_key: str
+    linode_db_backup_bucket_secret_key: str
 
     class Config:
         env_file = ".env"

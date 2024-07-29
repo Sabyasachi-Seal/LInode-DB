@@ -15,6 +15,7 @@ class Database(Base):
     db_instance_id = Column(String(100), nullable=False)
     instance_type = Column(String(50), nullable=False)
     region = Column(String(50), nullable=False)
+    instance_root_password = Column(String(100), nullable=False)  # Password for the database instance
     db_root_password = Column(String(100), nullable=False)  # Root password for the database
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
