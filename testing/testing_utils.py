@@ -37,21 +37,18 @@ def create_database(
 
 
 def list_databases():
-    input("Press Enter to list databases...")
     response = requests.get(f"{BASE_URL}/databases")
     assert response.status_code == 200, f"Failed to list databases: {response.text}"
     return response.json()
 
 
 def get_database(database_id: str):
-    input("Press Enter to get the database...")
     response = requests.get(f"{BASE_URL}/databases/{database_id}")
     assert response.status_code == 200, f"Failed to get database: {response.text}"
     return response.json()
 
 
 def update_database(database_id: str, new_db_name: str, new_instance_type: str):
-    input("Press Enter to update the database...")
     response = requests.put(
         f"{BASE_URL}/databases/",
         json={
@@ -65,7 +62,6 @@ def update_database(database_id: str, new_db_name: str, new_instance_type: str):
 
 
 def delete_database(database_id: str):
-    input("Press Enter to delete the database...")
     response = requests.delete(f"{BASE_URL}/databases/{database_id}")
     assert response.status_code == 200, f"Failed to delete database: {response.text}"
     return response.json()
@@ -78,7 +74,6 @@ def schedule_backup(
     day_of_week: int = None,
     day_of_month: int = None,
 ):
-    input("Press Enter to create a backup schedule...")
     response = requests.post(
         f"{BASE_URL}/schedule_backup/",
         json={
@@ -95,13 +90,33 @@ def schedule_backup(
     return response.json()
 
 
-def test_databases():
+def get_linode_stats(db_id: str):
+    while len(input("Press Enter to get Linode stats...")) == 0:
+        response = requests.get(f"{BASE_URL}/databases/{db_id}/stats")
+        print(response.json())
 
-    s = input("Existing DB Id ?")
+
+def get_linode_health(db_id: str):
+    while len(input("Press Enter to get Linode stats...")) == 0:
+        response = requests.get(f"{BASE_URL}/databases/{db_id}/health")
+        print(response.json())
+
+
+def test_all():
+    def controller(func, prompt_text, *args):
+        user_input = input(prompt_text)
+        if not user_input:
+            result = func(*args)
+            return result
+        else:
+            print("Skipped function")
+
+    s = input("Existing DB ID: ")
 
     if not s:
-
-        res = create_database(
+        res = controller(
+            create_database,
+            "Press Enter to create a database: ",
             "1",
             "test_mysql_db_something_big_name",
             "mysql",
@@ -110,25 +125,36 @@ def test_databases():
             "g6-nanode-1",
             "us-east",
         )
-
         print(res)
-
         db_id = res["database_id"]
-
     else:
         db_id = s
 
-    print(list_databases())
+    # Use the controller function to manage operations
+    print(controller(get_database, "Press Enter to get database details: ", db_id))
 
-    print(get_database(db_id))
+    print(
+        controller(
+            update_database,
+            "Press Enter to update database: ",
+            db_id,
+            "test_db_mysql_2",
+            "g6-standard-2",
+        )
+    )
 
-    print(update_database(db_id, "test_db_mysql_2", "g6-standard-2"))
+    print(
+        controller(
+            schedule_backup, "Press Enter to schedule backup: ", db_id, 2, "daily"
+        )
+    )
 
-    print(schedule_backup(db_id, 2, "daily"))
+    controller(get_linode_stats, "Press Enter to get Linode stats: ", db_id)
+    controller(get_linode_health, "Press Enter to get Linode health: ", db_id)
 
-    print(delete_database(db_id))
+    print(controller(delete_database, "Press Enter to delete database: ", db_id))
 
 
 if __name__ == "__main__":
     # create_db_and_tables()
-    test_databases()
+    test_all()

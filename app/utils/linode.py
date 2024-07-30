@@ -120,6 +120,34 @@ def create_linode_instance(
     return instance
 
 
+def get_instance_status(instance_id: str):
+    try:
+        instance: Instance = client.load(Instance, instance_id)
+        return instance.status
+    except Exception as e:
+        raise ValueError(
+            f"Error retrieving status for Linode instance {instance_id}: {str(e)}"
+        )
+
+
+def get_linode_stats(instance_id: str):
+    try:
+
+        instance: Instance = client.load(Instance, instance_id)
+        try:
+            stats = instance.stats
+            stats = stats.get("data", {})
+            stats["status"] = True
+        except Exception as e:
+            stats = {"status": False, "error": str(e)}
+        return stats
+    except Exception as e:
+        print(e)
+        raise ValueError(
+            f"Error retrieving stats for Linode instance {instance_id}: {str(e)}"
+        )
+
+
 def update_linode_instance(
     instance_id: str, instance_type: str = None, instance_name: str = None
 ):
@@ -145,6 +173,25 @@ def delete_linode_instance(instance_id: str):
         instance.delete()
     except Exception as e:
         raise ValueError(f"Error deleting Linode instance {instance_id}: {str(e)}")
+
+
+def get_linode_instance_details(instance_id: str) -> dict:
+    try:
+        instance = client.load(Instance, instance_id)
+        instance_details = {
+            "label": instance.label,
+            "specs": {
+                "disk": instance.specs.disk,
+                "gpus": instance.specs.gpus,
+                "memory": instance.specs.memory,
+                "transfer": instance.specs.transfer,
+                "vcpus": instance.specs.vcpus,
+            },
+            "status": instance.status,
+        }
+        return instance_details
+    except Exception as e:
+        raise ValueError(f"Error retrieving Linode instance {instance_id}: {str(e)}")
 
 
 def deploy_backup_script(
