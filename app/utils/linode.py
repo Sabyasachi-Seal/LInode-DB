@@ -12,6 +12,47 @@ from app.constants.contants import (
 from app.resources.resources import client, ssh_client, paramiko, Instance
 from app.constants.enums import DatabaseType
 from app.config import settings
+import boto3
+from botocore.exceptions import NoCredentialsError, PartialCredentialsError
+from datetime import datetime
+
+
+def get_unique_instance_name(id: str, db_name: str):
+    db_name.replace(".", "-")
+    return f"{db_name}.{id[:8]}.{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+
+
+def get_instance_name_from_label(label: str):
+    return label.split(".")[0]
+
+
+def delete_all_objects_from_folder(
+    bucket_name: str = settings.linode_db_backup_bucket, folder: str = ""
+):
+
+    linode_obj_config = {
+        "aws_access_key_id": settings.linode_db_backup_bucket_access_key,
+        "aws_secret_access_key": settings.linode_db_backup_bucket_secret_key,
+        "region_name": settings.linode_db_backup_bucket_region,
+        "endpoint_url": f"https://{settings.linode_db_backup_bucket_region}.linodeobjects.com",
+    }
+
+    s3_client = boto3.client("s3", **linode_obj_config)
+
+    try:
+        # List all objects in the specified bucket
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder)
+
+        if "Contents" in response:
+            for obj in response["Contents"]:
+                # Delete each object
+                s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
+    except NoCredentialsError:
+        print("Credentials not available.")
+    except PartialCredentialsError:
+        print("Incomplete credentials provided.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 def get_backup_script_content(db_type: str):
@@ -79,11 +120,20 @@ def create_linode_instance(
     return instance
 
 
-def update_linode_instance(instance_id: str, instance_type: str, region: str):
+def update_linode_instance(
+    instance_id: str, instance_type: str = None, instance_name: str = None
+):
     try:
-        instance = client.load(Instance, instance_id)
-        instance.type = instance_type
-        instance.region = region
+        instance: Instance = client.load(Instance, instance_id)
+
+        if instance_type:
+            status = instance.resize(instance_type)
+            if not status:
+                print(
+                    f"Failed to resize Linode instance {instance_id} to {instance_type}"
+                )
+
+        instance.label = instance_name if instance_name else instance.label
         instance.save()
     except Exception as e:
         raise ValueError(f"Error updating Linode instance {instance_id}: {str(e)}")

@@ -15,6 +15,8 @@ from app.utils.linode import (
     deploy_backup_script,
     update_linode_instance,
     delete_linode_instance,
+    get_unique_instance_name,
+    get_instance_name_from_label,
 )
 from app.utils.db import (
     get_db,
@@ -26,6 +28,7 @@ from app.constants.enums import BackupStatus
 from datetime import datetime
 from sqlalchemy.future import select
 from sqlalchemy.exc import NoResultFound
+from app.constants.errors import DATABASE_NOT_FOUND_ERROR
 
 app = FastAPI()
 
@@ -59,13 +62,19 @@ app.add_middleware(
 async def create_database(
     db_request: DatabaseRequest, session: AsyncSession = Depends(get_db)
 ):
+
     try:
-        label = f"{db_request.db_type}-{str(uuid4())}"
+
+        db_id = str(uuid4())
+        instance_label = get_unique_instance_name(db_id, db_request.db_name)
+
+        print(len(db_request.db_name), instance_label, len(instance_label))
+
         new_instance_pass = str(uuid4())
         new_db_pass = str(uuid4())
-        # Create the Linode instance
+
         instance = create_linode_instance(
-            label=label,
+            label=instance_label,
             db_type=db_request.db_type,
             instance_root_password=new_instance_pass,
             db_root_password=new_db_pass,
@@ -77,10 +86,10 @@ async def create_database(
 
         # Store the database information in the Database table
         db_instance = Database(
-            id=str(uuid4()),
-            user_id="1",  # Use a dummy user ID for now
+            id=db_id,
+            user_id=db_request.user_id,
             db_type=db_request.db_type,
-            db_name=label,
+            db_name=instance_label,
             db_instance_id=str(instance.id),
             instance_type=db_request.instance_type,
             region=db_request.region,
@@ -94,7 +103,10 @@ async def create_database(
 
         return {
             "message": "Database instance created successfully",
-            "instance_id": db_instance.id,
+            "database_id": db_instance.id,
+            "instance_id": db_instance.db_instance_id,
+            "instance_type": db_instance.instance_type,
+            "region": db_instance.region,
         }
     except Exception as e:
         raise HTTPException(
@@ -106,7 +118,17 @@ async def create_database(
 async def list_databases(session: AsyncSession = Depends(get_db)):
     result = await session.execute(select(Database))
     databases = result.scalars().all()
-    return databases
+    return [
+        {
+            "database_id": database.id,
+            "database_name": get_instance_name_from_label(database.db_name),
+            "instance_type": database.instance_type,
+            "region": database.region,
+            "created_at": database.created_at,
+            "updated_at": database.updated_at,
+        }
+        for database in databases
+    ]
 
 
 @app.get("/databases/{database_id}")
@@ -116,9 +138,16 @@ async def get_database(database_id: str, session: AsyncSession = Depends(get_db)
             select(Database).where(Database.id == database_id)
         )
         database = result.scalar_one()
-        return database
+        return {
+            "database_id": database.id,
+            "database_name": get_instance_name_from_label(database.db_name),
+            "instance_type": database.instance_type,
+            "region": database.region,
+            "created_at": database.created_at,
+            "updated_at": database.updated_at,
+        }
     except NoResultFound:
-        raise HTTPException(status_code=400, detail="Database not found")
+        raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
 
 
 @app.delete("/databases/{database_id}")
@@ -133,30 +162,35 @@ async def delete_database(database_id: str, session: AsyncSession = Depends(get_
         await session.commit()
         return {"message": "Database deleted successfully"}
     except NoResultFound:
-        raise HTTPException(status_code=400, detail="Database not found")
+        raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
 
 
 @app.put("/databases/")
 async def update_database(
     db_update: DatabaseUpdateRequest, session: AsyncSession = Depends(get_db)
 ):
+
     try:
         result = await session.execute(
             select(Database).where(Database.id == db_update.database_id)
         )
         database = result.scalar_one()
 
-        # update the instance type in linode
+        if db_update.database_name:
+            db_update.database_name = get_unique_instance_name(
+                database.id, db_update.database_name
+            )
+
+        # # update the instance type in linode
         update_linode_instance(
+            instance_name=db_update.database_name,
             instance_id=database.db_instance_id,
             instance_type=db_update.instance_type,
-            region=database.region,
         )
 
         # Update fields
-        database.db_name = db_update.db_name or database.db_name
+        database.db_name = db_update.database_name or database.database_name
         database.instance_type = db_update.instance_type or database.instance_type
-        database.region = db_update.region or database.region
         database.updated_at = datetime.utcnow()
 
         session.add(database)

@@ -1,9 +1,12 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from uuid import UUID
 from app.constants.enums import DatabaseType, InstanceType, Region, BackupSchedule
 
+
 class DatabaseRequest(BaseModel):
+    user_id: str
+    db_name: str = Field(..., min_length=3, max_length=36)
     db_type: DatabaseType  # "mysql", "postgresql", or "mongodb"
     new_user: str
     new_user_password: str
@@ -17,24 +20,31 @@ class DatabaseBackupRequest(BaseModel):
     database_id: str
     hour_of_day: int
     day_of_week: Optional[int] = None  # Optional, only present for for weekly frequency
-    day_of_month: Optional[int] = None  # Optional, for only present for monthly frequency
+    day_of_month: Optional[int] = (
+        None  # Optional, for only present for monthly frequency
+    )
     frequency: BackupSchedule
 
+
 class DatabaseUpdateRequest(BaseModel):
-    database_id: UUID
-    db_name: Optional[str] = None
+    database_id: str
+    database_name: Optional[str] = None
     instance_type: Optional[str] = None
+
 
 class UserBase(BaseModel):
     email: EmailStr
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
 
+
 class UserCreate(UserBase):
     password: str
 
+
 class UserUpdate(UserBase):
     password: Optional[str] = None
+
 
 class UserDB(UserBase):
     id: UUID
