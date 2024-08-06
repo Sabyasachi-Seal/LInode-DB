@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Check if the correct number of arguments are provided
-if [ "$#" -lt 10 ] || [ "$#" -gt 10 ]; then
-    echo "Usage: $0 <DB_HOST> <DB_USER> <DB_PASSWORD> <DB_NAME> <BUCKET_NAME> <OBJECT_STORAGE_REGION> <MAX_DAYS_BACKUPS> <BACKUP_FILE_PREFIX> <USER_ID> <DB_TYPE>"
+if [ "$#" -lt 11 ] || [ "$#" -gt 11 ]; then
+    echo "Usage: $0 <DB_HOST> <DB_USER> <DB_PASSWORD> <DB_NAME> <BUCKET_NAME> <OBJECT_STORAGE_REGION> <MAX_DAYS_BACKUPS> <BACKUP_FILE_PREFIX> <USER_ID> <DB_TYPE> <DB_ID>"
     exit 1
 fi
 
@@ -18,6 +18,7 @@ perform_backup() {
     BACKUP_FILE_PREFIX="$8"
     USER_ID="$9"
     DB_TYPE="${10}"
+    DB_ID="${11}"
 
     if [ "$DB_NAME" == "all" ]; then
         DB_NAME="--all-databases"
@@ -32,7 +33,7 @@ perform_backup() {
     BACKUP_FILE="/tmp/${BACKUP_FILE_PREFIX}_${DATE}.sql"
     COMPRESSED_BACKUP_FILE="${BACKUP_FILE_PREFIX}_${DATE}.gz"
     LOCAL_LOG_FILE="/tmp/${DATE}_backup.log"
-    LOG_FILE_PATH="logs/${DB_TYPE}/${USER_ID}/${YEAR}/${MONTH}/${DATE}_backup.log"
+    LOG_FILE_PATH="logs/${DB_TYPE}/${USER_ID}/${DB_ID}/${YEAR}/${MONTH}/${DATE}_backup.log"
 
     # Function to log messages
     log_message() {
@@ -54,7 +55,7 @@ perform_backup() {
     gzip -c "$BACKUP_FILE" > "/tmp/${COMPRESSED_BACKUP_FILE}"
     log_message "Backup file compressed."
 
-    TARGET_PATH="s3://${BUCKET_NAME}/${DB_TYPE}/${USER_ID}/${YEAR}/${MONTH}/${COMPRESSED_BACKUP_FILE}"
+    TARGET_PATH="s3://${BUCKET_NAME}/${DB_TYPE}/${USER_ID}/${DB_ID}/${YEAR}/${MONTH}/${COMPRESSED_BACKUP_FILE}"
     s4cmd put "/tmp/${COMPRESSED_BACKUP_FILE}" "$TARGET_PATH" --endpoint-url=https://"$OBJECT_STORAGE_REGION".linodeobjects.com
 
     if [ $? -eq 0 ]; then
@@ -73,7 +74,7 @@ perform_backup() {
     CUTOFF_DATE=$(date -d "-$MAX_BACKUPS days" +%Y-%m-%d)
 
     # List all backup files in the specific database backup directory
-    BACKUP_DIR="$DB_TYPE/$USER_ID"
+    BACKUP_DIR="$DB_TYPE/$USER_ID/$DB_ID"
     log_message "Checking for old backups in the $BACKUP_DIR directory..."
     BACKUP_FILES=$(s4cmd ls s3://$BUCKET_NAME/$BACKUP_DIR/ --endpoint-url=https://$OBJECT_STORAGE_REGION.linodeobjects.com)
 
@@ -115,7 +116,7 @@ perform_backup() {
     rm "$LOCAL_LOG_FILE"
 }
 
-perform_backup "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}"
+perform_backup "$1" "$2" "$3" "$4" "$5" "$6" "$7" "$8" "$9" "${10}" "${11}"
 if [ $? -ne 0 ]; then
     echo "An error occurred while backup."
 fi

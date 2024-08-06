@@ -52,3 +52,7 @@ class UserDB(UserBase):
 
     class Config:
         orm_mode = True
+
+
+class DatabaseBackupDeleteRequest(BaseModel):
+    backup_id: str

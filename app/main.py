@@ -7,6 +7,7 @@ from app.models.requests import (
     DatabaseRequest,
     DatabaseBackupRequest,
     DatabaseUpdateRequest,
+    DatabaseBackupDeleteRequest,
 )
 
 # from app.auth.auth import auth_backend, fastapi_users, current_active_user
@@ -19,7 +20,9 @@ from app.utils.linode import (
     get_instance_name_from_label,
     get_linode_stats,
     get_instance_status,
+    get_backups,
     get_linode_instance_details,
+    delete_backup,
 )
 from app.utils.db import (
     get_db,
@@ -332,6 +335,52 @@ async def get_database_health(
         raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving stats: {str(e)}")
+
+
+@app.get("/databases/{database_id}/backups")
+async def get_database_backups(
+    database_id: str, session: AsyncSession = Depends(get_db)
+):
+    try:
+
+        result = await session.execute(
+            select(Database).where(Database.id == database_id)
+        )
+        database = result.scalar_one()
+
+        backups = get_backups(
+            database_type=database.db_type,
+            user_id=database.user_id,
+            db_id=database.id,
+        )
+
+        return {"backups": backups}
+
+    except NoResultFound:
+        raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving backups: {str(e)}"
+        )
+
+
+@app.delete("/backups")
+async def delete_database_backup(
+    request: DatabaseBackupDeleteRequest,
+    session: AsyncSession = Depends(get_db),
+):
+
+    try:
+        status = delete_backup(
+            backup_id=request.backup_id,
+        )
+
+        return {"status": status}
+
+    except NoResultFound:
+        raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting backup: {str(e)}")
 
 
 if __name__ == "__main__":

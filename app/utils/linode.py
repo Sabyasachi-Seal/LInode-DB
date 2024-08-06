@@ -9,7 +9,13 @@ from app.constants.contants import (
     BACKUP_SCRIPT_SAVE_PATH,
     S3CFG_CONTENT,
 )
-from app.resources.resources import client, ssh_client, paramiko, Instance
+from app.resources.resources import (
+    client,
+    ssh_client,
+    paramiko,
+    Instance,
+    object_storage_client,
+)
 from app.constants.enums import DatabaseType
 from app.config import settings
 import boto3
@@ -30,23 +36,16 @@ def delete_all_objects_from_folder(
     bucket_name: str = settings.linode_db_backup_bucket, folder: str = ""
 ):
 
-    linode_obj_config = {
-        "aws_access_key_id": settings.linode_db_backup_bucket_access_key,
-        "aws_secret_access_key": settings.linode_db_backup_bucket_secret_key,
-        "region_name": settings.linode_db_backup_bucket_region,
-        "endpoint_url": f"https://{settings.linode_db_backup_bucket_region}.linodeobjects.com",
-    }
-
-    s3_client = boto3.client("s3", **linode_obj_config)
-
     try:
         # List all objects in the specified bucket
-        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=folder)
+        response = object_storage_client.list_objects_v2(
+            Bucket=bucket_name, Prefix=folder
+        )
 
         if "Contents" in response:
             for obj in response["Contents"]:
                 # Delete each object
-                s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
+                object_storage_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
     except NoCredentialsError:
         print("Credentials not available.")
     except PartialCredentialsError:
@@ -195,6 +194,7 @@ def get_linode_instance_details(instance_id: str) -> dict:
 
 
 def deploy_backup_script(
+    database_id: str,
     user_id: str,
     instance_id: str,
     db_type: str,
@@ -219,6 +219,7 @@ def deploy_backup_script(
                 "BACKUP_FILE_PREFIX": instance_id,
                 "USER_ID": user_id,
                 "DB_TYPE": db_type,
+                "DB_ID": database_id,
             }
         )
 
@@ -259,3 +260,47 @@ def deploy_backup_script(
         print(f"Error deploying backup script: {e}")
         ssh_client.close()
         return 1
+
+
+def get_backups(
+    user_id: str,
+    database_type: str,
+    db_id: str,
+    bucket_name=settings.linode_db_backup_bucket,
+):
+    # get the backups from the object storage, with the prefix backups/user_id/db_id
+
+    folder = f"{database_type}/{user_id}/{db_id}"
+
+    print(folder)
+
+    response = object_storage_client.list_objects_v2(Bucket=bucket_name, Prefix=folder)
+
+    print(response)
+
+    backups = []
+
+    if "Contents" in response:
+        backups = [
+            {
+                "id": obj["Key"],
+                "last_modified": obj["LastModified"],
+                "size": obj["Size"],
+            }
+            for obj in response["Contents"]
+        ]
+
+    return backups
+
+
+def delete_backup(backup_id: str):
+    # delete the backup from the object storage
+    try:
+        object_storage_client.delete_object(
+            Bucket=settings.linode_db_backup_bucket, Key=backup_id
+        )
+
+        return True
+    except Exception as e:
+        print(f"Error deleting backup: {e}")
+        return False
