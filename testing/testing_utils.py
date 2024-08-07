@@ -123,55 +123,53 @@ def test_all():
         else:
             print("Skipped function")
 
-    # s = input("Existing DB ID: ")
+    s = input("Existing DB ID: ")
 
-    db_id = "4610ab03-31b1-4a4d-a96a-823dc6051044"
+    if not s:
+        res = controller(
+            create_database,
+            "Press Enter to create a database: ",
+            "1",
+            "test_mysql_db_something_big_name",
+            "mysql",
+            "seal",
+            "Webknot@1234",
+            "g6-nanode-1",
+            "us-east",
+        )
+        print(res)
+        db_id = res["database_id"]
+    else:
+        db_id = s
 
-    # if not s:
-    #     res = controller(
-    #         create_database,
-    #         "Press Enter to create a database: ",
-    #         "1",
-    #         "test_mysql_db_something_big_name",
-    #         "mysql",
-    #         "seal",
-    #         "Webknot@1234",
-    #         "g6-nanode-1",
-    #         "us-east",
-    #     )
-    #     print(res)
-    #     db_id = res["database_id"]
-    # else:
-    #     db_id = s
-
-    # # Use the controller function to manage operations
-    # print(controller(get_database, "Press Enter to get database details: ", db_id))
-
-    # print(
-    #     controller(
-    #         update_database,
-    #         "Press Enter to update database: ",
-    #         db_id,
-    #         "test_db_mysql_2",
-    #         "g6-standard-2",
-    #     )
-    # )
-
-    # print(
-    #     controller(
-    #         schedule_backup, "Press Enter to schedule backup: ", db_id, 2, "daily"
-    #     )
-    # )
-
-    res = controller(list_backups, "Press Enter to list backups: ", db_id)
-
-    print(res)
+    # Use the controller function to manage operations
+    print(controller(get_database, "Press Enter to get database details: ", db_id))
 
     print(
         controller(
-            delete_backup, "Press Enter to delete backup: ", res["backups"][0]["id"]
+            update_database,
+            "Press Enter to update database: ",
+            db_id,
+            "test_db_mysql_2",
+            "g6-standard-2",
         )
     )
+
+    print(
+        controller(
+            schedule_backup, "Press Enter to schedule backup: ", db_id, 2, "daily"
+        )
+    )
+
+    res = controller(list_backups, "Press Enter to list backups: ", db_id)
+
+    if res:
+        print(res)
+        print(
+            controller(
+                delete_backup, "Press Enter to delete backup: ", res["backups"][0]["id"]
+            )
+        )
 
     controller(get_linode_stats, "Press Enter to get Linode stats: ", db_id)
     controller(get_linode_health, "Press Enter to get Linode health: ", db_id)

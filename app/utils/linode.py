@@ -8,12 +8,18 @@ from app.constants.contants import (
     MAX_BACKUP_LIMIT,
     BACKUP_SCRIPT_SAVE_PATH,
     S3CFG_CONTENT,
+    FIREWALL_LABEL,
+    FIREWALL_LABEL_PREFIX,
+    BACKUP_FOLDER_CONFIG,
+    FIREWALL_BASIC_CONFIG,
+    FIREWALL_SPECIFIC_CONFIGS,
 )
 from app.resources.resources import (
     client,
     ssh_client,
     paramiko,
     Instance,
+    Firewall,
     object_storage_client,
 )
 from app.constants.enums import DatabaseType
@@ -270,13 +276,11 @@ def get_backups(
 ):
     # get the backups from the object storage, with the prefix backups/user_id/db_id
 
-    folder = f"{database_type}/{user_id}/{db_id}"
-
-    print(folder)
+    folder = BACKUP_FOLDER_CONFIG.substitute(
+        {"DATABASE_TYPE": database_type, "USER_ID": user_id, "DB_ID": db_id}
+    )
 
     response = object_storage_client.list_objects_v2(Bucket=bucket_name, Prefix=folder)
-
-    print(response)
 
     backups = []
 
@@ -304,3 +308,89 @@ def delete_backup(backup_id: str):
     except Exception as e:
         print(f"Error deleting backup: {e}")
         return False
+
+
+def add_instance_to_firewall(firewall_id: str, instance_id: str):
+    try:
+        firewall: Firewall = client.load(Firewall, firewall_id)
+        firewall.device_create(id=int(instance_id))
+        firewall.save(force=True)
+        return firewall._raw_json
+    except Exception as e:
+        raise ValueError(f"Error adding instance to firewall: {str(e)}")
+
+
+def validate_firewall_rules(rules: dict, db_type: str):
+    allowed_rules = FIREWALL_BASIC_CONFIG.get(db_type, {}).get("rules", [])
+    for rule in rules.get("inbound", []):
+        if rule not in allowed_rules:
+            raise ValueError(f"Invalid rule for {db_type}: {rule}")
+
+
+def create_firewall(instance_id: str, db_type: DatabaseType):
+
+    label = FIREWALL_LABEL.substitute({"INSTANCE_ID": instance_id})
+
+    rules = FIREWALL_SPECIFIC_CONFIGS.get(db_type, FIREWALL_BASIC_CONFIG)
+
+    try:
+        firewall = client.networking.firewall_create(label=label, rules=rules)
+        return firewall._raw_json
+    except Exception as e:
+        raise ValueError(f"Error creating firewall: {str(e)}")
+
+
+def list_firewalls(
+    user_id: str = None, db_id: str = None, filter_str: str = FIREWALL_LABEL_PREFIX
+):
+    try:
+        firewalls = client.firewalls()
+        firewall_list = [firewall._raw_json for firewall in firewalls]
+
+        print(firewall_list)
+
+        if filter_str:
+            firewall_list = [
+                firewall
+                for firewall in firewall_list
+                if filter_str.lower() in firewall["label"].lower()
+            ]
+
+        # Filter firewalls based on user_id and db_id
+        if user_id and db_id:
+            firewall_list = [
+                firewall
+                for firewall in firewall_list
+                if f"{user_id}.{db_id}" in firewall["label"]
+            ]
+        return firewall_list
+    except Exception as e:
+        raise ValueError(f"Error listing firewalls: {str(e)}")
+
+
+def get_firewall(firewall_id: int):
+    try:
+        firewall = client.load(Firewall, firewall_id)
+        return firewall._raw_json
+    except Exception as e:
+        raise ValueError(f"Error retrieving firewall: {str(e)}")
+
+
+def update_firewall(firewall_id: int, rules: dict = None):
+    try:
+        firewall = client.load(Firewall, firewall_id)
+        if rules:
+            firewall.rules = rules
+        firewall.save()
+        return firewall._raw_json
+    except Exception as e:
+        raise ValueError(f"Error updating firewall: {str(e)}")
+
+
+def delete_firewall(firewall_id: int):
+    try:
+        firewall = client.load(Firewall, firewall_id)
+        firewall.delete()
+        return True
+    except Exception as e:
+        raise ValueError(f"Error deleting firewall: {str(e)}")

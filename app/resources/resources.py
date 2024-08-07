@@ -1,4 +1,4 @@
-from linode_api4 import LinodeClient, Instance
+from linode_api4 import LinodeClient, Instance, Firewall
 from app.config import settings
 import paramiko
 import boto3

@@ -8,6 +8,8 @@ from app.models.requests import (
     DatabaseBackupRequest,
     DatabaseUpdateRequest,
     DatabaseBackupDeleteRequest,
+    FirewallRequest,
+    FirewallUpdateRequest,
 )
 
 # from app.auth.auth import auth_backend, fastapi_users, current_active_user
@@ -23,6 +25,12 @@ from app.utils.linode import (
     get_backups,
     get_linode_instance_details,
     delete_backup,
+    create_firewall,
+    list_firewalls,
+    get_firewall,
+    update_firewall,
+    delete_firewall,
+    add_instance_to_firewall,
 )
 from app.utils.db import (
     get_db,
@@ -89,6 +97,16 @@ async def create_database(
             region=db_request.region,
         )
 
+        firewall = create_firewall(
+            instance_id=instance.id,
+            db_type=db_request.db_type,
+        )
+
+        firewall_status = add_instance_to_firewall(
+            firewall_id=firewall.get("id"),
+            instance_id=instance.id,
+        )
+
         # Store the database information in the Database table
         db_instance = Database(
             id=db_id,
@@ -100,9 +118,11 @@ async def create_database(
             region=db_request.region,
             db_root_password=new_db_pass,
             instance_root_password=new_instance_pass,
+            firewall_id=firewall.get("id"),
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
+
         session.add(db_instance)
         await session.commit()
 
@@ -112,6 +132,7 @@ async def create_database(
             "instance_id": db_instance.db_instance_id,
             "instance_type": db_instance.instance_type,
             "region": db_instance.region,
+            "firewall_status": firewall_status,
         }
     except Exception as e:
         raise HTTPException(
@@ -251,6 +272,7 @@ async def schedule_backup(
         database = await session.get(Database, database_id)
 
         status = deploy_backup_script(
+            database_id=database_id,
             user_id=database.user_id,
             instance_id=database.db_instance_id,
             cron_schedule=cron_expression,
@@ -376,11 +398,63 @@ async def delete_database_backup(
         )
 
         return {"status": status}
-
     except NoResultFound:
         raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting backup: {str(e)}")
+
+
+@app.get("/firewalls/")
+async def list_firewalls_endpoint(user_id: str = None, db_id: str = None):
+    try:
+        firewalls = list_firewalls(user_id=user_id, db_id=db_id)
+        return {"firewalls": firewalls}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error listing firewalls: {str(e)}"
+        )
+
+
+@app.get("/firewalls/{firewall_id}")
+async def get_firewall_endpoint(firewall_id: int):
+    try:
+        firewall = get_firewall(firewall_id)
+        return {"firewall": firewall}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error retrieving firewall: {str(e)}"
+        )
+
+
+@app.put("/firewalls/{firewall_id}")
+async def update_firewall_endpoint(
+    firewall_id: int, firewall_update: FirewallUpdateRequest
+):
+    try:
+        firewall = update_firewall(
+            firewall_id=firewall_id,
+            label=firewall_update.label,
+            rules=firewall_update.rules,
+        )
+        return {"message": "Firewall updated successfully", "firewall": firewall}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error updating firewall: {str(e)}"
+        )
+
+
+@app.delete("/firewalls/{firewall_id}")
+async def delete_firewall_endpoint(firewall_id: int):
+    try:
+        success = delete_firewall(firewall_id)
+        if success:
+            return {"message": "Firewall deleted successfully"}
+        else:
+            raise HTTPException(status_code=500, detail="Error deleting firewall")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error deleting firewall: {str(e)}"
+        )
 
 
 if __name__ == "__main__":

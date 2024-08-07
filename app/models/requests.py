@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from uuid import UUID
 from app.constants.enums import DatabaseType, InstanceType, Region, BackupSchedule
+from typing import Dict, Any
 
 
 class DatabaseRequest(BaseModel):
@@ -56,3 +57,13 @@ class UserDB(UserBase):
 
 class DatabaseBackupDeleteRequest(BaseModel):
     backup_id: str
+
+
+class FirewallRequest(BaseModel):
+    label: str
+    rules: Dict[str, Any]
+
+
+class FirewallUpdateRequest(BaseModel):
+    label: str
+    rules: Dict[str, Any] = None
