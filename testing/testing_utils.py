@@ -163,8 +163,9 @@ def test_all():
 
     res = controller(list_backups, "Press Enter to list backups: ", db_id)
 
-    if res:
-        print(res)
+    print(res)
+
+    if len(res["backups"]) > 0:
         print(
             controller(
                 delete_backup, "Press Enter to delete backup: ", res["backups"][0]["id"]
