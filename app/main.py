@@ -31,6 +31,7 @@ from app.utils.linode import (
     update_firewall,
     delete_firewall,
     add_instance_to_firewall,
+    validate_firewall_rules,
 )
 from app.utils.db import (
     get_db,
@@ -176,6 +177,7 @@ async def get_database(database_id: str, session: AsyncSession = Depends(get_db)
                 "status", False
             ),
             "linode_details": get_linode_instance_details(database.db_instance_id),
+            "firewall_details": get_firewall(firewall_id=database.firewall_id),
         }
     except NoResultFound:
         raise HTTPException(status_code=400, detail=DATABASE_NOT_FOUND_ERROR)
@@ -426,15 +428,29 @@ async def get_firewall_endpoint(firewall_id: int):
         )
 
 
-@app.put("/firewalls/{firewall_id}")
+@app.put("/firewalls/")
 async def update_firewall_endpoint(
-    firewall_id: int, firewall_update: FirewallUpdateRequest
+    request: FirewallUpdateRequest, session: AsyncSession = Depends(get_db)
 ):
     try:
+
+        result = await session.execute(
+            select(Database).where(Database.id == request.database_id)
+        )
+        database: Database = result.scalar_one()
+
+        is_rules_valid, rules = validate_firewall_rules(
+            rules=request.rules, db_type=database.db_type
+        )
+
+        if not is_rules_valid:
+            raise HTTPException(
+                status_code=400, detail="Invalid firewall rules provided"
+            )
+
         firewall = update_firewall(
-            firewall_id=firewall_id,
-            label=firewall_update.label,
-            rules=firewall_update.rules,
+            firewall_id=database.firewall_id,
+            rules=rules,
         )
         return {"message": "Firewall updated successfully", "firewall": firewall}
     except Exception as e:

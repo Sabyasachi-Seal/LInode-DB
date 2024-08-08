@@ -13,6 +13,9 @@ from app.constants.contants import (
     BACKUP_FOLDER_CONFIG,
     FIREWALL_BASIC_CONFIG,
     FIREWALL_SPECIFIC_CONFIGS,
+    FIREWALL_ALLOWED_PROTOCOLS,
+    FIREWALL_ACTIONS,
+    FIREWALL_REQUIRED_KEYS,
 )
 from app.resources.resources import (
     client,
@@ -27,6 +30,7 @@ from app.config import settings
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
 from datetime import datetime
+from typing import List, Dict
 
 
 def get_unique_instance_name(id: str, db_name: str):
@@ -320,11 +324,69 @@ def add_instance_to_firewall(firewall_id: str, instance_id: str):
         raise ValueError(f"Error adding instance to firewall: {str(e)}")
 
 
-def validate_firewall_rules(rules: dict, db_type: str):
-    allowed_rules = FIREWALL_BASIC_CONFIG.get(db_type, {}).get("rules", [])
-    for rule in rules.get("inbound", []):
-        if rule not in allowed_rules:
-            raise ValueError(f"Invalid rule for {db_type}: {rule}")
+def validate_firewall_rules(rules: Dict, db_type: str):
+
+    required_keys = FIREWALL_REQUIRED_KEYS
+
+    def validate_rule_dict(rule: Dict):
+
+        if any(key not in rule.keys() for key in required_keys):
+            return False
+
+        is_valid_action = (
+            isinstance(rule["action"], str) and rule["action"] in FIREWALL_ACTIONS
+        )
+        is_valid_protocol = (
+            isinstance(rule["protocol"], str)
+            and rule["protocol"] in FIREWALL_ALLOWED_PROTOCOLS
+        )
+        is_valid_ports = isinstance(rule["ports"], str)
+        has_valid_addresses = isinstance(rule["addresses"], dict) and all(
+            k in rule["addresses"] for k in ["ipv4", "ipv6"]
+        )
+        has_valid_ipv4_addresses = isinstance(rule["addresses"]["ipv4"], list)
+        has_valid_ipv6_addresses = isinstance(rule["addresses"]["ipv6"], list)
+        is_valid_label = isinstance(rule["label"], str)
+        is_valid_description = isinstance(rule["description"], str)
+
+        conditions = [
+            is_valid_action,
+            is_valid_protocol,
+            is_valid_ports,
+            has_valid_addresses,
+            has_valid_ipv4_addresses,
+            has_valid_ipv6_addresses,
+            is_valid_label,
+            is_valid_description,
+        ]
+
+        return all(conditions)
+
+    if not (
+        all(validate_rule_dict(rule) for rule in rules.get("inbound", []))
+        and all(validate_rule_dict(rule) for rule in rules.get("outbound", []))
+    ):
+        return False, {}
+
+    allowed_rules = FIREWALL_SPECIFIC_CONFIGS.get(db_type, {})
+    all_ports_inbound = [rule["ports"] for rule in allowed_rules.get("inbound", [])]
+    all_ports_outbound = [rule["ports"] for rule in allowed_rules.get("outbound", [])]
+
+    inbound = rules.get("inbound", [])
+    outbound = rules.get("outbound", [])
+
+    if any(rule["ports"] in all_ports_inbound for rule in inbound):
+        return False, {}
+
+    if any(rule["ports"] in all_ports_outbound for rule in outbound):
+        return False, {}
+
+    for policy in ["inbound", "outbound"]:
+        current_policy = rules.get(policy, [])
+        current_policy = current_policy + allowed_rules.get(policy, [])
+        rules[policy] = current_policy
+
+    return True, rules
 
 
 def create_firewall(instance_id: str, db_type: DatabaseType):
@@ -378,10 +440,10 @@ def get_firewall(firewall_id: int):
 
 def update_firewall(firewall_id: int, rules: dict = None):
     try:
-        firewall = client.load(Firewall, firewall_id)
+        firewall: Firewall = client.load(Firewall, firewall_id)
         if rules:
-            firewall.rules = rules
-        firewall.save()
+            firewall.update_rules(rules=rules)
+        firewall.save(force=True)
         return firewall._raw_json
     except Exception as e:
         raise ValueError(f"Error updating firewall: {str(e)}")

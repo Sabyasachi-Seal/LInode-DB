@@ -45,6 +45,7 @@ FIREWALL_LABEL_PREFIX = "linode-db-firewall"
 FIREWALL_LABEL = Template(f"{FIREWALL_LABEL_PREFIX}_$INSTANCE_ID")
 
 ALL_IP_IPV4 = "0.0.0.0/0"
+
 ALL_IP_IPV6 = "::/0"
 
 FIREWALL_ALLOWED_BASIC_PORTS = ["80", "443", "22"]
@@ -60,6 +61,11 @@ FIREWALL_BASIC_CONFIG = [
     }
     for port in FIREWALL_ALLOWED_BASIC_PORTS
 ]
+
+FIREWALL_DEFAULT_POLICIES = {
+    "inbound_policy": "DROP",
+    "outbound_policy": "ACCEPT",
+}
 
 FIREWALL_SPECIFIC_CONFIGS = {
     DatabaseType.mysql.value: {
@@ -84,8 +90,21 @@ FIREWALL_SPECIFIC_CONFIGS = {
                 "addresses": {"ipv4": [ALL_IP_IPV4], "ipv6": [ALL_IP_IPV6]},
             },
         ],
-        "inbound_policy": "DROP",
-        "outbound_policy": "ACCEPT",
-    }
+        **FIREWALL_DEFAULT_POLICIES,
+    },
 }
+
 BACKUP_FOLDER_CONFIG = Template("$DATABASE_TYPE/$USER_ID/$DB_ID")
+
+FIREWALL_ALLOWED_PROTOCOLS = ["TCP", "UDP", "ICMP"]
+
+FIREWALL_ACTIONS = ["ACCEPT", "DROP"]
+
+FIREWALL_REQUIRED_KEYS = [
+    "action",
+    "protocol",
+    "ports",
+    "addresses",
+    "label",
+    "description",
+]

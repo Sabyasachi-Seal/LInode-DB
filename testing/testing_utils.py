@@ -97,7 +97,7 @@ def get_linode_stats(db_id: str):
 
 
 def get_linode_health(db_id: str):
-    while len(input("Press Enter to get Linode stats...")) == 0:
+    while len(input("Press Enter to get Linode health...")) == 0:
         response = requests.get(f"{BASE_URL}/databases/{db_id}/health")
         print(response.json())
 
@@ -114,6 +114,14 @@ def delete_backup(backup_id: str):
     return response.json()
 
 
+def update_database_firewall(database_id: str, rules=[{}]):
+    response = requests.put(
+        f"{BASE_URL}/firewalls/", json={"database_id": database_id, "rules": rules}
+    )
+    assert response.status_code == 200, f"Failed to update firewall: {response.text}"
+    return response.json()
+
+
 def test_all():
     def controller(func, prompt_text, *args):
         user_input = input(prompt_text)
@@ -123,54 +131,78 @@ def test_all():
         else:
             print("Skipped function")
 
-    s = input("Existing DB ID: ")
+    # s = input("Existing DB ID: ")
 
-    if not s:
-        res = controller(
-            create_database,
-            "Press Enter to create a database: ",
-            "1",
-            "test_mysql_db_something_big_name",
-            "mysql",
-            "seal",
-            "Webknot@1234",
-            "g6-nanode-1",
-            "us-east",
-        )
-        print(res)
-        db_id = res["database_id"]
-    else:
-        db_id = s
+    # if not s:
+    #     res = controller(
+    #         create_database,
+    #         "Press Enter to create a database: ",
+    #         "1",
+    #         "test_mysql_db_something_big_name",
+    #         "mysql",
+    #         "seal",
+    #         "Webknot@1234",
+    #         "g6-nanode-1",
+    #         "us-east",
+    #     )
+    #     print(res)
+    #     db_id = res["database_id"]
+    # else:
+    #     db_id = s
 
-    # Use the controller function to manage operations
-    print(controller(get_database, "Press Enter to get database details: ", db_id))
+    # # Use the controller function to manage operations
+    # print(controller(get_database, "Press Enter to get database details: ", db_id))
+
+    # print(
+    #     controller(
+    #         update_database,
+    #         "Press Enter to update database: ",
+    #         db_id,
+    #         "test_db_mysql_2",
+    #         "g6-standard-2",
+    #     )
+    # )
+
+    # print(
+    #     controller(
+    #         schedule_backup, "Press Enter to schedule backup: ", db_id, 2, "daily"
+    #     )
+    # )
+
+    # res = controller(list_backups, "Press Enter to list backups: ", db_id)
+
+    # if res and len(res["backups"]) > 0:
+    #     print(res)
+    #     print(
+    #         controller(
+    #             delete_backup, "Press Enter to delete backup: ", res["backups"][0]["id"]
+    #         )
+    #     )
+
+    db_id = "b1e609f2-ac6b-4816-8d0d-638540b8b9f9"
 
     print(
         controller(
-            update_database,
-            "Press Enter to update database: ",
+            update_database_firewall,
+            "Press Enter to update firewall: ",
             db_id,
-            "test_db_mysql_2",
-            "g6-standard-2",
+            {
+                "inbound": [
+                    {
+                        "action": "ACCEPT",
+                        "protocol": "TCP",
+                        "ports": "1302",
+                        "label": "allow-custom-traffic-1302",
+                        "description": "Allow all inbound traffic to my machine",
+                        "addresses": {
+                            "ipv4": ["152.58.183.49/32"],
+                            "ipv6": ["2409:40e0:20:a379:b840:c358:4d09:f9b2/128"],
+                        },
+                    },
+                ]
+            },
         )
     )
-
-    print(
-        controller(
-            schedule_backup, "Press Enter to schedule backup: ", db_id, 2, "daily"
-        )
-    )
-
-    res = controller(list_backups, "Press Enter to list backups: ", db_id)
-
-    print(res)
-
-    if len(res["backups"]) > 0:
-        print(
-            controller(
-                delete_backup, "Press Enter to delete backup: ", res["backups"][0]["id"]
-            )
-        )
 
     controller(get_linode_stats, "Press Enter to get Linode stats: ", db_id)
     controller(get_linode_health, "Press Enter to get Linode health: ", db_id)
